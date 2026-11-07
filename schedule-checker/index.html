@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#F6F7F9">
+<title>Posting schedule checker</title>
+<style>
+  :root {
+    --page: #F6F7F9; --ink: #1B2233; --rule: #D5D9E2; --action: #2446D8;
+    --clash: #B3261E; --missing: #7A4E00; --close: #5B3FA6;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 1rem/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 68rem; margin: 0 auto; padding: 2rem 1.25rem 3rem; }
+  h1 { margin: 0 0 .25rem; font-size: 1.75rem; line-height: 1.2; text-wrap: balance; }
+  .hint { margin: 0 0 1.5rem; max-width: 60ch; text-wrap: pretty; }
+  .nowrap { white-space: nowrap; }
+  .layout { display: grid; gap: 2rem; }
+  @media (min-width: 860px) { .layout { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; } }
+  label { display: block; margin-bottom: .4rem; font-weight: 600; }
+  textarea { width: 100%; min-height: 18rem; padding: .75rem; border: 1px solid var(--rule); border-radius: 6px; background: #fff; color: var(--ink); font: .875rem/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace; resize: vertical; }
+  button { margin-top: .75rem; padding: .7rem 1.25rem; border: 0; border-radius: 6px; background: var(--action); color: #fff; font: inherit; font-weight: 600; cursor: pointer; touch-action: manipulation; }
+  button:hover { background: #1B37B0; }
+  textarea:focus-visible, button:focus-visible { outline: 3px solid var(--action); outline-offset: 2px; }
+  #summary { margin: 0 0 .75rem; font-size: 1.25rem; font-weight: 600; min-height: 1.9rem; }
+  #results { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--rule); }
+  #results li { overflow-wrap: anywhere; padding: .65rem .9rem; border-bottom: 1px solid var(--rule); border-left: 4px solid var(--c); }
+  #results strong { display: block; color: var(--c); }
+  #results li[data-type="same-slot"] { --c: var(--clash); }
+  #results li[data-type="missing-field"], #results li[data-type="bad-header"] { --c: var(--missing); }
+  #results li[data-type="section-too-close"] { --c: var(--close); }
+  #results li[data-type="unreadable-row"] { --c: var(--missing); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Posting schedule checker</h1>
+  <p class="hint">Copy your tracker rows, header included, and paste them in. Dates are <span class="nowrap">YYYY-MM-DD</span>, times are 24-hour <span class="nowrap">HH:MM</span>. Cancelled posts are ignored.</p>
+
+  <div class="layout">
+    <section>
+      <label for="input">Schedule rows</label>
+      <textarea id="input" name="rows" autocomplete="off" spellcheck="false" placeholder="date,time,section,title,status&#10;2026-11-12,09:00,News,Budget story,approved&#10;2026-11-12,09:00,Arts,Gallery opening,approved&#10;…"></textarea>
+      <button id="check" type="button">Check schedule</button>
+    </section>
+
+    <section>
+      <p id="summary" role="status"></p>
+      <ul id="results" aria-live="polite"></ul>
+    </section>
+  </div>
+</main>
+
+<script src="src/checker.js"></script>
+<script>
+  const LABELS = {
+    'bad-header': 'Header',
+    'missing-field': 'Missing field',
+    'unreadable-row': 'Unreadable row',
+    'same-slot': 'Same slot',
+    'section-too-close': 'Too close',
+  };
+  const input = document.getElementById('input');
+  const summary = document.getElementById('summary');
+  const results = document.getElementById('results');
+
+  document.getElementById('check').addEventListener('click', () => {
+    results.replaceChildren();
+    if (input.value.trim() === '') {
+      summary.textContent = 'Paste some rows first.';
+      return;
+    }
+    const problems = ScheduleChecker.checkSchedule(input.value);
+    summary.textContent = problems.length === 0
+      ? 'No problems found.'
+      : `${problems.length} ${problems.length === 1 ? 'problem' : 'problems'} found`;
+    for (const p of problems) {
+      const li = document.createElement('li');
+      li.dataset.type = p.type;
+      const label = document.createElement('strong');
+      label.textContent = LABELS[p.type];
+      const message = document.createElement('span');
+      message.textContent = p.message;
+      li.append(label, message);
+      results.append(li);
+    }
+  });
+</script>
+</body>
+</html>
